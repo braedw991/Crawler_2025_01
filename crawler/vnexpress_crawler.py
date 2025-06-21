@@ -9,6 +9,9 @@ import pytz
 from urllib.parse import urljoin
 import time as time_module
 import random
+from exporter.pdf_exporter import export_pdf
+from integrations.google_drive_uploader import upload_to_drive
+import os
 
 # Import các thành phần cần thiết từ dự án
 from config.settings import BASE_URL, CATEGORIES
@@ -66,16 +69,20 @@ def get_article_links_from_category_page(category_url: str) -> list:
     print(f"✅ Tìm thấy {len(links)} link bài viết.")
     return links
 
-def crawl_articles_by_category_and_date(category_name: str, target_date: datetime):
+# SỬA ĐỔI 2: Thay đổi chữ ký hàm để nhận 'category_url'
+def crawl_articles_by_category_and_date(category_name: str, category_url: str, target_date: datetime, drive_folder_id: str, limit=10):
     """
-    Quy trình crawl chính: Xây dựng URL -> Lấy link -> Parse từng bài.
+    Quy trình crawl chính: Lấy link từ URL được cung cấp -> Parse từng bài.
     """
-    print(f"🚀 Bắt đầu quá trình crawl chuyên mục '{category_name}' cho ngày {target_date.strftime('%d/%m/%Y')}...")
+    print(f"🚀 Bắt đầu quá trình crawl chuyên mục '{category_name}'...")
     
-    category_url = build_category_url(category_name, target_date)
+    # SỬA ĐỔI 3: Không cần build URL nữa vì nó đã được truyền vào
+    # category_url = build_category_url(category_name, target_date)
     if not category_url:
+        print("❌ URL chuyên mục không hợp lệ. Dừng lại.")
         return
 
+    # Sử dụng category_url được truyền vào để lấy link
     urls = get_article_links_from_category_page(category_url)
     if not urls:
         print("🏁 Không có bài viết nào để xử lý. Kết thúc.")
@@ -107,3 +114,13 @@ def crawl_articles_by_category_and_date(category_name: str, target_date: datetim
         time_module.sleep(sleep_time)
 
     print(f"\n🎉 Hoàn tất! Tổng số bài viết mới được lưu: {new_count}")
+
+    # 2. Xuất PDF
+    pdf_file_path = export_pdf(category_name, target_date, limit=limit)
+    
+    # 3. Upload lên Google Drive
+    if pdf_file_path and os.path.exists(pdf_file_path):
+        print(f"☁️  Đang tải file '{pdf_file_path}' lên thư mục Google Drive ID: {drive_folder_id}")
+        upload_to_drive(pdf_file_path, drive_folder_id)
+    else:
+        print("⚠️ Không có file PDF để tải lên.")

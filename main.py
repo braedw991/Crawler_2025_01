@@ -1,5 +1,6 @@
 from crawler.vnexpress_crawler import crawl_articles_by_category_and_date
 from exporter.pdf_exporter import export_pdf
+# SỬA ĐỔI: Import từ thư mục 'integrations'
 from integrations.google_drive_uploader import upload_to_drive
 from database.db_manager import save_articles, load_articles
 from config.settings import CATEGORIES, BASE_URL
@@ -7,11 +8,17 @@ import os
 from datetime import datetime
 import sys
 import traceback
+import json
+from dotenv import load_dotenv
+import pytz
 
 # Thêm đường dẫn gốc của dự án vào sys.path để import hoạt động ổn định
 # Điều này rất quan trọng để tránh các lỗi ImportError trong các môi trường khác nhau
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
+
+# Tải các biến môi trường từ file .env (dành cho chạy local)
+load_dotenv()
 
 # Lấy ID thư mục Drive từ biến môi trường
 DRIVE_FOLDER_ID = os.getenv("DRIVE_FOLDER_ID")
@@ -83,5 +90,54 @@ def main():
     
     print("\n🎉🎉🎉 QUY TRÌNH HOÀN TẤT! 🎉🎉🎉")
 
+def legacy_main():
+    """
+    Hàm chính điều phối toàn bộ quá trình crawl cho nhiều chuyên mục.
+    """
+    # Lấy chuỗi JSON chứa các mục tiêu từ biến môi trường
+    targets_json = os.getenv("CRAWL_TARGETS")
+    if not targets_json:
+        print("❌ Lỗi: Không tìm thấy biến môi trường CRAWL_TARGETS. Hãy chắc chắn bạn đã cấu hình nó trong file .env hoặc GitHub Secrets.")
+        return
+
+    try:
+        crawl_targets = json.loads(targets_json)
+    except json.JSONDecodeError:
+        print("❌ Lỗi: Biến CRAWL_TARGETS không phải là một chuỗi JSON hợp lệ.")
+        return
+
+    # Lấy ngày hiện tại theo múi giờ Việt Nam
+    vietnam_tz = pytz.timezone("Asia/Ho_Chi_Minh")
+    today = datetime.now(vietnam_tz)
+    
+    print(f"--- Bắt đầu phiên làm việc ngày {today.strftime('%d-%m-%Y')} ---")
+
+    # Lặp qua từng mục tiêu và thực hiện crawl
+    for target in crawl_targets:
+        category_name = target.get("category_name")
+        category_url = target.get("vnexpress_url")
+        drive_folder_id = target.get("drive_folder_id")
+
+        if not all([category_name, category_url, drive_folder_id]):
+            print(f"⚠️ Bỏ qua mục tiêu không hợp lệ: {target}")
+            continue
+        
+        try:
+            crawl_articles_by_category_and_date(
+                category_name=category_name,
+                category_url=category_url,
+                target_date=today,
+                drive_folder_id=drive_folder_id,
+                limit=10 # Bạn có thể đặt limit ở đây
+            )
+        except Exception as e:
+            print(f"❌ Đã xảy ra lỗi nghiêm trọng khi xử lý chuyên mục '{category_name}': {e}")
+        
+        print(f"--- Hoàn thành chuyên mục: {category_name} ---\n")
+
+    print("✅ Tất cả các chuyên mục đã được xử lý. Kết thúc phiên làm việc.")
+
 if __name__ == "__main__":
-    main()
+    # Bạn đã gọi legacy_main() là chính xác cho việc tự động hóa
+    # main() 
+    legacy_main()
