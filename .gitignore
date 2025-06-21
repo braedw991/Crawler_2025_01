@@ -1,0 +1,29 @@
+# --- Credentials & Secrets ---
+# Bỏ qua file biến môi trường
+.env
+
+# Bỏ qua file credentials của Google (RẤT QUAN TRỌNG)
+config/gold-cocoa-460316-p9-b467244cdbc8.json
+
+
+# --- Python specific ---
+# Thư mục cache của Python
+__pycache__/
+*.pyc
+*.pkl
+
+
+# --- Generated data & Logs ---
+# Bỏ qua thư mục data chứa file json và pdf đã tạo
+data/
+
+# Bỏ qua thư mục tạm chứa ảnh
+temp/
+
+# Bỏ qua các file log
+*.log
+
+
+# --- Editor specific ---
+# Thư mục cài đặt của VS Code
+.vscode/

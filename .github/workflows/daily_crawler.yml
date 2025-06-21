@@ -1,0 +1,36 @@
+# filepath: .github/workflows/daily_crawler.yml
+
+name: Daily VnExpress Crawler
+
+on:
+  workflow_dispatch: # Cho phép chạy thủ công từ tab Actions trên GitHub
+  schedule:
+    # Chạy vào 23:30 mỗi ngày (giờ Việt Nam)
+    # 16:55 UTC tương đương 23:30 giờ Việt Nam (UTC+7)
+    - cron: '55 16 * * *'
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11' # Hoặc phiên bản Python bạn đang dùng
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests beautifulsoup4 fpdf2 pillow google-api-python-client google-auth-httplib2 google-auth-oauthlib pytz python-dotenv
+
+    - name: Run the crawler script
+      env:
+        # Sử dụng các secrets đã tạo
+        GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+        DRIVE_FOLDER_ID: ${{ secrets.DRIVE_FOLDER_ID }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # <-- THÊM DÒNG NÀY
+      run: python main.py
